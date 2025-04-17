@@ -14,11 +14,26 @@
 #define WINDOW_HEIGHT 1200
 #define GRAVITY 9.81f
 
-bool isFullscreen = false;
-
 glm::vec3 position(0.0f, 0.5f, 0.0f);
 glm::vec3 velocity(0.0f, 0.0f, 0.0f); 
-glm::vec3 acceleration(GRAVITY, -GRAVITY, 0.0f);  
+glm::vec3 acceleration(0.0f, -GRAVITY, 0.0f);  
+
+const int numBalls = 2;
+
+glm::vec3 positionLocation[numBalls] = {
+    glm::vec3(-0.5f, 0.5f, 0.0f),
+    glm::vec3(0.5f, 0.5f, 0.0f)
+};
+
+glm::vec3 velocityLocation[numBalls] = {
+    glm::vec3(0.0f, 0.0f, 0.0f),
+    glm::vec3(0.0f, 0.0f, 0.0f)
+};
+
+glm::vec3 accelerationLocation[numBalls] = {
+    glm::vec3(0.0f, -GRAVITY, 0.0f),
+    glm::vec3(0.0f, -GRAVITY, 0.0f)
+};
 
 std::vector<glm::vec3> vertices;
 
@@ -58,7 +73,33 @@ void frameBuffer_call_back(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-void handleCollision() {
+void handleInput(GLFWwindow* window, glm::vec3 &acceleration) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        acceleration.x = GRAVITY;
+    } else {
+        acceleration.x = 0.0f;
+    }
+
+    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        acceleration.x = -GRAVITY;
+    }
+
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        acceleration.y = GRAVITY;
+    } else {
+        acceleration.y = -GRAVITY;
+    }
+
+    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        acceleration.y = -GRAVITY;
+    } 
+}
+
+void handleCollision(glm::vec3 &position, glm::vec3 &velocity) {
     int width, height;
 
     glfwGetFramebufferSize(glfwGetCurrentContext(), &width, &height);
@@ -78,15 +119,39 @@ void handleCollision() {
     }
     if (position.y >= topBound) {
         position.y = topBound;
-        velocity.y = -velocity.y;
+        velocity.y = -velocity.y * 0.8f;
     }
     if (position.x >= rightBound) {
         position.x = rightBound;
-        velocity.x = -velocity.x;
+        velocity.x = -velocity.x * 0.8f;
     }
     if (position.x <= leftBound) {
         position.x = leftBound;
-        velocity.x = -velocity.x;
+        velocity.x = -velocity.x * 0.8f;
+    }
+}
+
+void handleBallcollision(glm::vec3 &pos1, glm::vec3 &vel1, glm::vec3 &pos2, glm::vec3 &vel2, float radius) {
+    glm::vec3 diff = pos2 - pos1;
+    float dist = glm::length(diff);
+
+    if(dist < 2 * radius) {
+        glm::vec3 normal = glm::normalize(diff);
+
+        glm::vec3 relVel = vel2 - vel1;
+
+        if (glm::dot(relVel, normal) < 0.0f) {
+            float impulse = glm::dot(relVel, normal);
+            glm::vec3 impulseVec = impulse * normal;
+
+            vel1 -= impulseVec;
+            vel2 += impulseVec;
+
+            float penetration = 2 * radius - dist;
+            glm::vec3 correction = normal * (penetration / 2.0f);
+            pos1 -= correction;
+            pos2 += correction;
+        }   
     }
 }
 
@@ -141,30 +206,40 @@ int main() {
         glClearColor(0.0f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         
+        float radius = 0.5f * 0.2f;
+
         static float lastTime = 0.0f;
         float currentTime = static_cast<float>(glfwGetTime());
         float deltaTime = currentTime - lastTime;
         lastTime = currentTime;
-
-        velocity += acceleration * deltaTime;
-        position += velocity * deltaTime + 0.5f * acceleration * deltaTime * deltaTime;
-
-        handleCollision();
+        for (int i = 0; i < numBalls; i++) {
+            velocityLocation[i] += accelerationLocation[i] * deltaTime;
+            positionLocation[i] += velocityLocation[i] * deltaTime + 0.5f * accelerationLocation[i] * deltaTime * deltaTime;
+        }
+        handleInput(window, accelerationLocation[0]);
+        for (int i = 0; i < numBalls; i++) {
+            handleCollision(positionLocation[i], velocityLocation[i]);
+            for (int j = i + 1; j < numBalls; j++) {
+                handleBallcollision(positionLocation[i], velocityLocation[i], positionLocation[j], velocityLocation[j], radius);
+            }
+        }
 
         ShaderProgram.use();
 
-        glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = glm::mat4(1.0f);
         
-        model = glm::translate(model, position);
-        model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
-
         glUniformMatrix4fv(glGetUniformLocation(ShaderProgram.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(ShaderProgram.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(ShaderProgram.ID, "model"), 1, GL_FALSE ,glm::value_ptr(model));
         
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        for(int i = 0; i < numBalls; i++) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, positionLocation[i]);
+            model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
+            
+            glUniformMatrix4fv(glGetUniformLocation(ShaderProgram.ID, "model"), 1, GL_FALSE ,glm::value_ptr(model));
+            glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
