@@ -1,0 +1,59 @@
+# === CMake build ===
+/build/
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/Makefile
+/install_manifest.txt
+
+# === Ninja ===
+/.ninja_deps
+/.ninja_log
+/build.ninja
+/rules.ninja
+
+# === Visual Studio / MSBuild ===
+*.VC.db
+*.VC.VC.opendb
+*.vcxproj*
+*.sln
+*.sdf
+*.opensdf
+*.user
+*.log
+
+
+# === Compiled outputs ===
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+*.out
+*.a
+*.lib
+*.pdb
+
+# === vcpkg artifacts ===
+/vcpkg_installed/
+/vcpkg/buildtrees/
+/vcpkg/packages/
+/vcpkg/downloads/
+
+# Optional: ignore local vcpkg copy if vendored
+/vcpkg/
+
+# === VSCode ===
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/ipch/
+.vscode/*.code-workspace
+.vscode/*
+
+# === OS/Editor junk ===
+*.DS_Store
+*.swp
+*.bak
+*~
+Thumbs.db
