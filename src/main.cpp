@@ -20,6 +20,10 @@ glm::vec3 acceleration(0.0f, -GRAVITY, 0.0f);
 
 const int numBalls = 2;
 
+glm::vec3 defaultLocation[numBalls] = {
+    glm::vec3(-0.5f, 0.5f, 0.0f),
+    glm::vec3(0.5f, 0.5f, 0.0f)
+};
 glm::vec3 positionLocation[numBalls] = {
     glm::vec3(-0.5f, 0.5f, 0.0f),
     glm::vec3(0.5f, 0.5f, 0.0f)
@@ -115,7 +119,7 @@ void handleCollision(glm::vec3 &position, glm::vec3 &velocity) {
     // Collision detection with adjusted bounds
     if (position.y <= bottomBound) {
         position.y = bottomBound;
-        velocity.y = -velocity.y; 
+        velocity.y = -velocity.y * 0.8f; 
     }
     if (position.y >= topBound) {
         position.y = topBound;
@@ -132,26 +136,30 @@ void handleCollision(glm::vec3 &position, glm::vec3 &velocity) {
 }
 
 void handleBallcollision(glm::vec3 &pos1, glm::vec3 &vel1, glm::vec3 &pos2, glm::vec3 &vel2, float radius) {
+    float elasticity = 0.5f;
+    float mass1 = 1.0f;
+    float mass2 = 1.0f;
+
     glm::vec3 diff = pos2 - pos1;
-    float dist = glm::length(diff);
+    float distance = glm::length(diff);
+    float minDistance = radius * 2.0f;
 
-    if(dist < 2 * radius) {
+    if(distance < minDistance) {
         glm::vec3 normal = glm::normalize(diff);
+        float relVelocity = glm::dot(vel2 - vel1, normal);
 
-        glm::vec3 relVel = vel2 - vel1;
+        if (relVelocity < 0.0f) {
+            float j = -(1 + elasticity) * relVelocity;
+            j /= (1 / mass1 + 1 / mass2);
 
-        if (glm::dot(relVel, normal) < 0.0f) {
-            float impulse = glm::dot(relVel, normal);
-            glm::vec3 impulseVec = impulse * normal;
+            glm::vec3 impulse = j * normal;
+            vel1 -= impulse / mass1;
+            vel2 += impulse / mass2;
 
-            vel1 -= impulseVec;
-            vel2 += impulseVec;
-
-            float penetration = 2 * radius - dist;
-            glm::vec3 correction = normal * (penetration / 2.0f);
-            pos1 -= correction;
-            pos2 += correction;
-        }   
+            float correction = 0.8 * (minDistance - distance) / 2.0f;
+            pos1 -= correction * normal;
+            pos2 += correction * normal;
+        }
     }
 }
 
@@ -219,8 +227,12 @@ int main() {
         handleInput(window, accelerationLocation[0]);
         for (int i = 0; i < numBalls; i++) {
             handleCollision(positionLocation[i], velocityLocation[i]);
-            for (int j = i + 1; j < numBalls; j++) {
-                handleBallcollision(positionLocation[i], velocityLocation[i], positionLocation[j], velocityLocation[j], radius);
+            handleBallcollision(positionLocation[0], velocityLocation[0],
+                                positionLocation[1], velocityLocation[1], radius
+                            );
+
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+                positionLocation[i] = defaultLocation[i];
             }
         }
 
