@@ -1,2 +1,2 @@
 # Build
-cmake build with vcpkg toolchainS
+cmake build with vcpkg toolchains
