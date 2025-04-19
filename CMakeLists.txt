@@ -33,6 +33,12 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         OpenGL::GL
 )
 
+# Source files listed in output
+message(STATUS "Sources found:")
+foreach(file ${MY_SOURCES})
+    message(STATUS " - ${file}")
+endforeach()
+
 # Copy shader files to the build directory
 set(RESOURCE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 set(RESOURCE_DEST_DIR "${CMAKE_BINARY_DIR}/resources")
@@ -63,7 +69,7 @@ foreach(SUBDIR ${RESOURCE_SUBDIRS})
     endif()
 endforeach()
 
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC
     RESROUCE_DIR="${RESOURCE_DEST_DIR}"
     SHADER_DIR="${RESOURCE_DEST_DIR}/shaders/"
     TEXTURE_DIR="${RESOURCE_DEST_DIR}/textures/"
